@@ -228,6 +228,7 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
     host and symbiont"""
 
     logging.info('Classifying using Blast results')
+    logging.info('Parent ID is %s' %parent_id)
     c = 0
     blastClassification = {}
     trainingClassification = {}
@@ -239,6 +240,7 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
     noParentClassified = 0
     # refError is a counter to track hits that cannot be associated with a tax-id#
     refError           = 0
+    taxa_result = []
     for qName in querries:
         c += 1
         hits = querries[qName]
@@ -250,6 +252,7 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
         bestParent      = ''
         bestNonParent   = ''
         othersClassified = '' ##This is for the non-Parent hits summary later
+        childClassified = ''
         #parentBestEvalue    = -1
         #noParentBestEvalue  = -1
         parentBestBit       = 0
@@ -278,11 +281,14 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
                     refError += 1
                     continue
                 if tax_id in parent_list:
+                    ## DEBUG ##FIXME
+                    if not tax_id in taxa_result:
+                        taxa_result.append(tax_id) 
                     hasParent        = True
                     if bitscore > parentBestBit:
                         parentBestBit = bitscore
                         bestParent    = hName
-                        othersClassified = parent_id
+                        childClassified = tax_id
                 elif not tax_id in parent_list:
                     noParent        = True
                     if bitscore > noParentBestBit:
@@ -295,19 +301,19 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
                 if bitscore > parentBestBit:
                     parentBestBit = bitscore
                     bestParent    = hName
-                    
+                    childClassified = parent_id
         ###PLS REMOVE THIS AFTER TESTING
         #To handle cases where best hit is the database hits, entry on othersClassified will be the parent taxa id itself
         if parentBestBit == 0 and noParentBestBit == 0:
             continue
         ###FOR THE STRICTLY UNAMBIGUOUS CASE
         if hasParent and not noParent:
-            trainingClassification[qName] = PARENT_CODE
-            blastClassification[qName]    = PARENT_CODE
-            othersTrainClassification[qName] = parent_id
-            othersBlastClassification[qName] = parent_id
-            parentTrained                += 1
-            parentClassified             += 1             
+            trainingClassification[qName]    = PARENT_CODE
+            blastClassification[qName]       = PARENT_CODE
+            othersTrainClassification[qName] = childClassified
+            othersBlastClassification[qName] = childClassified
+            parentTrained                   += 1
+            parentClassified                += 1             
         elif noParent and not hasParent:
             trainingClassification[qName]    = NO_PARENT_CODE
             blastClassification[qName]       = NO_PARENT_CODE
@@ -322,7 +328,7 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
             ###FOR THE NON-STRINGENT CLASSIFICATION CASE
             if bitDelta >= 0:
                 trainingClassification[qName] = PARENT_CODE
-                othersTrainClassification[qName] = parent_id
+                othersTrainClassification[qName] = childClassified
                 parentTrained                += 1
             else:
                 trainingClassification[qName]    = NO_PARENT_CODE
@@ -331,13 +337,15 @@ def classifyFromBlast(querries, args, gi_list, parent_id, parent_name, parent_li
             ###FOR THE STRINGENT CLASSIFICATION CASE    
             if bitDelta > args.bit_delta:
                 blastClassification[qName] = PARENT_CODE
-                othersBlastClassification[qName] = parent_id
+                othersBlastClassification[qName] = childClassified
                 parentClassified          += 1
             elif bitDelta <= -args.bit_delta:
                 blastClassification[qName] = NO_PARENT_CODE 
                 othersBlastClassification[qName] = othersClassified
                 noParentClassified        += 1                
         #print "completed %d queries" %c
+    print '%d variety of parent taxa members in query' %len(taxa_result)
+    print taxa_result
     print "length of others classified"
     print len(othersTrainClassification)
     logging.debug("Others Blast size %d while counter shows %d " %(len(othersBlastClassification),noParentClassified))
@@ -420,12 +428,11 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
         found = False
         for entry in other_taxid_dict:
             group = str(entry)
-            if found:
-                break
             if hitId in other_taxid_dict[entry]:
                 count_train.append('%s: %s'%(group, hitId))
                 found = True
                 c += 1
+                break
         if not found:
             count_train.append('others: %s' %hitId)   
     count_blast = []           
@@ -436,13 +443,12 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
         found = False
         for entry in other_taxid_dict:
             group = str(entry)
-            if found:
-                break
             if hitId in other_taxid_dict[entry]:
                 #print "FOUND OTHER HITS' FAMILY"
                 count_blast.append('%s: %s'%(group, hitId))
                 found = True
                 d += 1
+                break
         if not found:
             count_blast.append('others: %s' %hitId)
     print "other taxa classified: Train - %d and Blast - %d" %(c,d)
