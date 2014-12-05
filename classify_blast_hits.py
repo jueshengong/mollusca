@@ -373,11 +373,13 @@ def seqSplit(args, trainingClassification, blastClassification):
     noParentTrain = open(os.path.join(args.out_dir, short_name + '_No_'+ PARENT_NAME + '_training.fasta'), 'w')
     parentBlast   = open(os.path.join(args.out_dir, short_name + '_With_' + PARENT_NAME +'_blast_train.fasta'), 'w')
     noParentBlast = open(os.path.join(args.out_dir, short_name + '_No_' + PARENT_NAME +'_blast_train.fasta'), 'w')
-    
+    short_seq_dict = {}
     for name, seq in iterFasta(args.input):
-        if len(seq) < args.seq_size:
-            continue
         identity = (name.split(' ')[0])
+        if len(seq) < args.seq_size:
+            # Only need to initialize once!
+            short_seq_dict[identity] = 1
+            continue
         seqClass = trainingClassification.get(identity, 0)
         if seqClass == PARENT_CODE:
             parentTrain.write('>%s\n%s\n' % (identity, seq))
@@ -399,6 +401,7 @@ def seqSplit(args, trainingClassification, blastClassification):
     handle.close()
     parentTrain.close()
     noParentTrain.close()
+    return short_seq_dict
 
 
 ####################################################################
@@ -407,12 +410,14 @@ def seqSplit(args, trainingClassification, blastClassification):
 
 
 
-def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastClass):
+def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastClass, short_seq_dict):
     ###total non-Parent hits: for Training  #########
     input_name = args.input
     short_name = '_'.join([input_name.split('_')[0],input_name.split('_')[1]])
     c = 0
     d = 0
+    short_train = 0
+    short_blast = 0
     ##Function currently not in use##
     def countTable(other_taxid_dict):
         count_dict = {}
@@ -423,6 +428,9 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
         
     count_train = []
     for qName in othersTrainClass:
+        if qName in short_seq_dict:
+            short_train += 1
+            continue
         hitId = othersTrainClass[qName]
         hitId = hitId.replace('.0','')       
         found = False
@@ -437,6 +445,9 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
             count_train.append('others: %s' %hitId)   
     count_blast = []           
     for qName in othersBlastClass:
+        if qName in short_seq_dict:
+            short_blast += 1
+            continue
         hitId = othersBlastClass[qName]
         hitId = hitId.replace('.0','') 
         #print hitId        
@@ -451,6 +462,7 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
                 break
         if not found:
             count_blast.append('others: %s' %hitId)
+    logging.debug("ignored %d short general training sequence and %d short blast train sequence" %(short_train, short_blast))
     print "other taxa classified: Train - %d and Blast - %d" %(c,d)
     other_train_summary = open(os.path.join(args.out_dir, short_name) + '_others_train_summary.txt','w')
     other_blast_summary = open(os.path.join(args.out_dir, short_name) + '_others_blast_summary.txt','w')
@@ -461,6 +473,7 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
     other_train_summary.close()
     other_blast_summary.close()    
     logging.info('Summary for Other hits have been completed.')
+    
     
 
 
@@ -562,11 +575,11 @@ def main():
     
     logging.debug("classification completed, writing to fasta. classified query size is %d" %len(trainingClass))
     logging.info("Setting: minimum sequence length for parsing is set to be %d" %args.seq_size)
-    seqSplit(args, trainingClass, blastClass)
+    short_seq_dict = seqSplit(args, trainingClass, blastClass)
     logging.info('Main Classification process completed.')
     ## Preparation of classification summary for the non-Parent hits ###########
     other_dict = prepareOtherTaxaDict(OTHERS_SPEC_LIST)
-    prepareOtherSummary(args, other_dict, othersTrainClass, othersBlastClass) 
+    prepareOtherSummary(args, other_dict, othersTrainClass, othersBlastClass, short_seq_dict) 
     logging.info('Sub-classification summary for other hits have been successfully completed.')
     logging.info('Exiting...')
     
