@@ -423,7 +423,7 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
             if found:
                 break
             if hitId in other_taxid_dict[entry]:
-                count_train.append(group)
+                count_train.append('%s: %s'%(group, hitId))
                 found = True
                 c += 1
         if not found:
@@ -440,7 +440,7 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
                 break
             if hitId in other_taxid_dict[entry]:
                 #print "FOUND OTHER HITS' FAMILY"
-                count_blast.append(group)
+                count_blast.append('%s: %s'%(group, hitId))
                 found = True
                 d += 1
         if not found:
