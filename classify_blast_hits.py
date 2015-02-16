@@ -154,7 +154,7 @@ def filterBestBit(args, querries):
         setGroup        = 1
         bestEvalue      = 1
         for hName, isGroup, bitscore, evalue in hits:
-            if bitscore < minBitScore or evalue < maxEvalue:
+            if bitscore < minBitScore or evalue > maxEvalue:
                 continue
             if bitscore > bestBit:
                 bestBit     = bitscore                
