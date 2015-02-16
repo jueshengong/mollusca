@@ -536,7 +536,7 @@ def main():
     ## Configuration for .log ##########################
     logName = os.path.basename(args.input) + '_' + PARENT_NAME + '_'+ args.out_dir +'_classifyBlast.log'
     logPath = os.path.join(args.out_dir, logName)
-    logging.basicConfig(level=logging.DEBUG, format=("%(asctime)s - %(funcName)s - %(message)s"), filename=logName, filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format=("%(asctime)s - %(funcName)s - %(message)s"), filename=logPath, filemode='w')
     
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
