@@ -527,9 +527,15 @@ def mainArgs():
 
 def main():
     args = mainArgs()
+
+    if not os.path.exists(args.out_dir):
+        logging.info("Output direcotry does not exist. Creating the output directory..")
+        os.makedirs(args.out_dir)
+        logging.info("Output directory successfully created")
     
     ## Configuration for .log ##########################
     logName = os.path.basename(args.input) + '_' + PARENT_NAME + '_'+ args.out_dir +'_classifyBlast.log'
+    logPath = os.path.join(args.out_dir, logName)
     logging.basicConfig(level=logging.DEBUG, format=("%(asctime)s - %(funcName)s - %(message)s"), filename=logName, filemode='w')
     
     console = logging.StreamHandler()
@@ -547,12 +553,7 @@ def main():
     merged_path   = os.path.basename(args.input) + merged_prefix
     dmp_path = GI_PROT_DMP
     parent_dir = PARENT_LIST
-    
-    if not os.path.exists(args.out_dir):
-        logging.info("Output direcotry does not exist. Creating the output directory..")
-        os.makedirs(args.out_dir)
-        logging.info("Output directory successfully created")
-    
+     
     if args.merged_dir:
         merged_path   = os.path.join(args.merged_dir, merged_path)
     else:        
