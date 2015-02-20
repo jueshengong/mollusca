@@ -366,7 +366,7 @@ def seqSplit(args, trainingClassification, blastClassification):
     logging.info('Preparing training sequences')
     m = 0
     j = 0
-    input_name    = args.input
+    input_name    = os.path.basename(args.input)
     short_name    = '_'.join([input_name.split('_')[0],input_name.split('_')[1]]) 
     handle        = open(args.input,'r')
     parentTrain   = open(os.path.join(args.out_dir, short_name + '_With_' + PARENT_NAME +'_training.fasta'), 'w')
@@ -387,6 +387,7 @@ def seqSplit(args, trainingClassification, blastClassification):
         elif seqClass == NO_PARENT_CODE:
             noParentTrain.write('>%s\n%s\n' % (identity, seq))
             j += 1
+    print "m is %d, j is %d" %(m,j)
     for name, seq in iterFasta(args.input):
         if len(seq) < args.seq_size:
             continue
@@ -398,9 +399,13 @@ def seqSplit(args, trainingClassification, blastClassification):
         elif seqClass == NO_PARENT_CODE:
             noParentBlast.write('>%s\n%s\n' % (identity, seq))
             j += 1
+    print "m is %d, j is %d" %(m,j)
     handle.close()
     parentTrain.close()
     noParentTrain.close()
+    parentBlast.close()
+    noParentBlast.close()
+    logging.info('Write to fasta of training sequences has been completed.')
     return short_seq_dict
 
 
@@ -412,7 +417,7 @@ def seqSplit(args, trainingClassification, blastClassification):
 
 def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastClass, short_seq_dict):
     ###total non-Parent hits: for Training  #########
-    input_name = args.input
+    input_name = os.path.basename(args.input)
     short_name = '_'.join([input_name.split('_')[0],input_name.split('_')[1]])
     c = 0
     d = 0
@@ -474,8 +479,10 @@ def prepareOtherSummary(args, other_taxid_dict, othersTrainClass, othersBlastCla
     other_blast_summary.close()    
     logging.info('Summary for Other hits have been completed.')
     
-    
-
+def ticker(args, string):
+    string = os.path.join(args.out_dir, string + '.tick')
+    handle = open(string, 'w')
+    handle.close()    
 
 def mainArgs():
     """Process command-line arguments"""
@@ -525,18 +532,14 @@ def mainArgs():
     args = parser.parse_args()
     return args
 
+
+
 def main():
     args = mainArgs()
-
-    if not os.path.exists(args.out_dir):
-        logging.info("Output direcotry does not exist. Creating the output directory..")
-        os.makedirs(args.out_dir)
-        logging.info("Output directory successfully created")
     
     ## Configuration for .log ##########################
     logName = os.path.basename(args.input) + '_' + PARENT_NAME + '_'+ args.out_dir +'_classifyBlast.log'
-    logPath = os.path.join(args.out_dir, logName)
-    logging.basicConfig(level=logging.DEBUG, format=("%(asctime)s - %(funcName)s - %(message)s"), filename=logPath, filemode='w')
+    logging.basicConfig(level=logging.DEBUG, format=("%(asctime)s - %(funcName)s - %(message)s"), filename=logName, filemode='w')
     
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -553,12 +556,28 @@ def main():
     merged_path   = os.path.basename(args.input) + merged_prefix
     dmp_path = GI_PROT_DMP
     parent_dir = PARENT_LIST
-     
+    
+    if not os.path.exists(args.out_dir):
+        logging.info("Output directory does not exist. Creating the output directory..")
+        os.makedirs(args.out_dir)
+        logging.info("Output directory successfully created")
+    
     if args.merged_dir:
         merged_path   = os.path.join(args.merged_dir, merged_path)
     else:        
         merged_path   = os.path.join(os.getcwd(), merged_path)    
-
+    print 'merged path is %s ' %merged_path
+    ##########################TEST FUNCTION#####################
+    #testOutpath   = os.path.join(args.out_dir, 'TEST_Output' + '_With_' + PARENT_NAME +'_training.fasta')
+    #print "testOutput path is %s" %testOutpath
+    #testOutput = open(testOutpath, 'w')
+    #testOutput.write('write completed')
+    #testOutput.close()
+    #if os.path.exists(testOutpath):
+    #    logging.info('test successful. output file found')
+    print " ====================================="    
+    ############################################################
+    ticker(args, 'set_path')
     ## Parsing of Blast Output, COnversion of gi to taxid for member lookup (Classification) and Sorting via bitscore ## 
     logging.info("loading parent list")
     parent_list = loadFamily(parent_dir)
@@ -573,7 +592,7 @@ def main():
     print len(othersTrainClass)
     print "length of othersBlastClass dict printing.."
     print len(othersBlastClass)
-    
+    ticker(args, 'set_dict')
     logging.debug("classification completed, writing to fasta. classified query size is %d" %len(trainingClass))
     logging.info("Setting: minimum sequence length for parsing is set to be %d" %args.seq_size)
     short_seq_dict = seqSplit(args, trainingClass, blastClass)
@@ -581,6 +600,7 @@ def main():
     ## Preparation of classification summary for the non-Parent hits ###########
     other_dict = prepareOtherTaxaDict(OTHERS_SPEC_LIST)
     prepareOtherSummary(args, other_dict, othersTrainClass, othersBlastClass, short_seq_dict) 
+    ticker(args, 'set_summary')
     logging.info('Sub-classification summary for other hits have been successfully completed.')
     logging.info('Exiting...')
     
